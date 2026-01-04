@@ -1,0 +1,131 @@
+if game.PlaceId ~= 131623223084840 then return end
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+local VirtualUser = game:GetService("VirtualUser")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local player = Players.LocalPlayer
+
+pcall(function() if workspace:FindFirstChild("ActiveTsunamis") then workspace.ActiveTsunamis:Destroy() end end)
+for i=1,5 do
+	local base = workspace:FindFirstChild("Bases") and workspace.Bases:FindFirstChild("Base"..i)
+	if base and base:FindFirstChild("FreeEpic") then base.FreeEpic:Destroy() end
+end
+
+local WindUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/Footagesus/WindUI/main/dist/main.lua"))()
+local Window = WindUI:CreateWindow({
+	Title = "Tsunami brainrots",
+	Icon = "waves",
+	Author = "By Slowzzx4",
+	Folder = "TsunamiBrainrots",
+	Size = UDim2.fromOffset(560, 430),
+	Theme = "Crimson",
+	Transparent = true,
+	Resizable = true,
+	User = { Enabled = true }
+})
+
+local FarmTab    = Window:Tab({ Title = "Farm", Icon = "zap" })
+local UpgradeTab = Window:Tab({ Title = "Upgrade", Icon = "trending-up" })
+local ThemeTab   = Window:Tab({ Title = "Theme", Icon = "palette" })
+
+player.Idled:Connect(function()
+	VirtualUser:CaptureController()
+	VirtualUser:ClickButton2(Vector2.new())
+end)
+
+local character, hrp
+local function setupChar(c)
+	character = c
+	hrp = c:WaitForChild("HumanoidRootPart")
+end
+if player.Character then setupChar(player.Character) end
+player.CharacterAdded:Connect(function(c) task.wait(1) setupChar(c) end)
+
+local findOn = false
+local BASE_POS   = Vector3.new(130,3,0)
+local SECRET_POS = Vector3.new(2440,3,-4)
+local TargetBrainrot = "Fragola La La La"
+
+local function tweenTo(pos, time)
+	if not hrp then return end
+	local t = TweenService:Create(hrp, TweenInfo.new(time, Enum.EasingStyle.Linear), { CFrame = CFrame.new(pos) })
+	t:Play()
+	return t
+end
+
+FarmTab:Toggle({ Title = "Find Best Brainrot", Default = false, Callback = function(v) findOn = v end })
+
+RunService.Heartbeat:Connect(function()
+	if not findOn or not hrp then return end
+	for _, p in ipairs(workspace:GetDescendants()) do
+		if p:IsA("ProximityPrompt") then
+			local part = p.Parent
+			if part and part:IsA("BasePart") then
+				if (hrp.Position - part.Position).Magnitude <= 6 then
+					pcall(function() fireproximityprompt(p, true) end)
+				end
+			end
+		end
+	end
+end)
+
+task.spawn(function()
+	while task.wait(0.4) do
+		if not findOn or not hrp then continue end
+		tweenTo(SECRET_POS, 1.5)
+		task.wait(1.6)
+		local brainrot
+		repeat
+			task.wait(0.5)
+			brainrot = workspace:FindFirstChild("ActiveBrainrots")
+				and workspace.ActiveBrainrots:FindFirstChild("Secret")
+				and workspace.ActiveBrainrots.Secret:FindFirstChild(TargetBrainrot)
+		until brainrot or not findOn
+		if not findOn then continue end
+		if not brainrot or not brainrot:FindFirstChild("Handle") then continue end
+		hrp.CFrame = brainrot.Handle.CFrame + Vector3.new(0,3,0)
+		task.wait(0.5)
+		local toBase = tweenTo(BASE_POS, 2.8)
+		local dropped = false
+		while toBase and toBase.PlaybackState == Enum.PlaybackState.Playing do
+			task.wait(0.2)
+			if not brainrot or not brainrot.Parent or (hrp.Position - brainrot.Handle.Position).Magnitude > 15 then
+				dropped = true
+				toBase:Cancel()
+				break
+			end
+		end
+		if dropped then
+			tweenTo(SECRET_POS, 1.5)
+			task.wait(1.6)
+			continue
+		end
+		task.wait(3)
+	end
+end)
+
+local autoUpgrade, autoCarry, autoRebirth = false,false,false
+UpgradeTab:Toggle({ Title="Auto Upgrade", Callback=function(v) autoUpgrade=v end })
+UpgradeTab:Toggle({ Title="Auto Rebirth", Callback=function(v) autoRebirth=v end })
+UpgradeTab:Toggle({ Title="Auto Carry", Callback=function(v) autoCarry=v end })
+
+task.spawn(function()
+	while task.wait(0.1) do
+		if autoUpgrade then pcall(function() ReplicatedStorage.RemoteFunctions.UpgradeSpeed:InvokeServer(10) end) end
+		if autoCarry then pcall(function() ReplicatedStorage.RemoteFunctions.UpgradeCarry:InvokeServer() end) end
+		if autoRebirth then pcall(function() ReplicatedStorage.RemoteFunctions.Rebirth:InvokeServer() end) end
+	end
+end)
+
+ThemeTab:Dropdown({
+	Title = "Select Theme",
+	Values = {"Dark","Light","Rose","Plant","Red","Indigo","Sky","Violet","Amber","Emerald","Midnight","Crimson","MonokaiPro","CottonCandy","Rainbow"},
+	Default = "Crimson",
+	Callback = function(t) WindUI:SetTheme(t) end
+})
+
+Window:SelectTab(2)
+Window:SetVisible(true)
